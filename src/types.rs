@@ -10,6 +10,24 @@ pub enum Types{
     Array(Vec<Types>),
     None
 }
+/// allows collect to work with iterators on Type
+impl FromIterator<Types> for Types {
+    fn from_iter<T: IntoIterator<Item = Types>>(iter: T) -> Types {
+        let mut result = Vec::new();
+        for i in iter{
+            result.push(i)
+        }
+       Types::Array(result)
+}
+}
+impl Iterator for Types{
+    type Item = Types;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(self.clone())
+    }
+}
+/// allows for printing of Type varaiants
 impl Display for Types{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result{
         match self{
@@ -35,29 +53,9 @@ impl Add for Types {
         match (self, rhs){
             (Types::Number(l), Types::Number(r)) => {return Types::Number(l+r)},
             (Types::Number(l), Types::String(r)) => {return Types::String(l.to_string() + &r)},
-            (Types::Number(_), Types::None) => Types::None,
             (Types::String(l), Types::Number(r)) => {return Types::String(r.to_string() + &l)},
             (Types::String(l), Types::String(r)) => {return Types::String(l.add(&r));},
-            (Types::String(_), Types::None) => Types::None,
-            (Types::None, Types::Number(_)) => Types::None,
-            (Types::None, Types::String(_)) => Types::None,
-            (Types::None, Types::None) =>Types::None,
-            (Types::Number(_), Types::Bool(_)) => Types::None,
-            (Types::String(_), Types::Bool(_)) => Types::None,
-            (Types::Bool(_), Types::Number(_)) => Types::None,
-            (Types::Bool(_), Types::String(_)) => Types::None,
-            (Types::Bool(_), Types::Bool(_)) => Types::None,
-            (Types::Bool(_), Types::None) => Types::None,
-            (Types::None, Types::Bool(_)) => Types::None,
-            (Types::Number(_), Types::Array(_)) => Types::None,
-            (Types::String(_), Types::Array(_)) => Types::None,
-            (Types::Bool(_), Types::Array(_)) => Types::None,
-            (Types::Array(_), Types::Number(_)) => Types::None,
-            (Types::Array(_), Types::String(_)) => Types::None,
-            (Types::Array(_), Types::Bool(_)) => Types::None,
-            (Types::Array(_), Types::Array(_)) => Types::None,
-            (Types::Array(_), Types::None) => Types::None,
-            (Types::None, Types::Array(_)) => Types::None,
+            _ => {return Types::None} // all other cases
         }
     }
 }
@@ -68,29 +66,9 @@ impl Sub for Types {
         match (self, rhs){
             (Types::Number(l), Types::Number(r)) => {return Types::Number(l-r)},
             (Types::Number(l), Types::String(r)) => {return Types::String((l.to_be_bytes()[0] - r.as_bytes()[0]).to_string())},
-            (Types::Number(_), Types::None) => Types::None,
             (Types::String(l), Types::Number(r)) => {return Types::String((l.as_bytes()[0] - r.to_be_bytes()[0]).to_string())},
             (Types::String(l), Types::String(r)) => {return Types::String((l.as_bytes()[0] - r.as_bytes()[0]).to_string());},
-            (Types::String(_), Types::None) => Types::None,
-            (Types::None, Types::Number(_)) => Types::None,
-            (Types::None, Types::String(_)) => Types::None,
-            (Types::None, Types::None) =>Types::None,
-            (Types::Number(_), Types::Bool(_)) => Types::None,
-            (Types::String(_), Types::Bool(_)) => Types::None,
-            (Types::Bool(_), Types::Number(_)) => Types::None,
-            (Types::Bool(_), Types::String(_)) => Types::None,
-            (Types::Bool(_), Types::Bool(_)) => Types::None,
-            (Types::Bool(_), Types::None) => Types::None,
-            (Types::None, Types::Bool(_)) => Types::None,
-            (Types::Number(_), Types::Array(_)) => Types::None,
-            (Types::String(_), Types::Array(_)) => Types::None,
-            (Types::Bool(_), Types::Array(_)) => Types::None,
-            (Types::Array(_), Types::Number(_)) => Types::None,
-            (Types::Array(_), Types::String(_)) => Types::None,
-            (Types::Array(_), Types::Bool(_)) => Types::None,
-            (Types::Array(_), Types::Array(_)) => Types::None,
-            (Types::Array(_), Types::None) => Types::None,
-            (Types::None, Types::Array(_)) => Types::None,
+            _ =>{return Types::None;} // all other cases
         }
     }
 }
@@ -103,27 +81,7 @@ impl Mul for Types {
             (Types::Number(l), Types::String(r)) => {return Types::String((l.to_be_bytes()[0] * r.as_bytes()[0]).to_string())},
             (Types::String(l), Types::Number(r)) => {return Types::String((l.as_bytes()[0] * r.to_be_bytes()[0]).to_string())},
             (Types::String(l), Types::String(r)) => {return Types::String((l.as_bytes()[0] * r.as_bytes()[0]).to_string());},
-            (Types::Number(_), Types::None) => Types::None,
-            (Types::String(_), Types::None) => Types::None,
-            (Types::None, Types::Number(_)) => Types::None,
-            (Types::None, Types::String(_)) => Types::None,
-            (Types::None, Types::None) =>Types::None,
-            (Types::Number(_), Types::Bool(_)) => Types::None,
-            (Types::String(_), Types::Bool(_)) => Types::None,
-            (Types::Bool(_), Types::Number(_)) => Types::None,
-            (Types::Bool(_), Types::String(_)) => Types::None,
-            (Types::Bool(_), Types::Bool(_)) => Types::None,
-            (Types::Bool(_), Types::None) => Types::None,
-            (Types::None, Types::Bool(_)) => Types::None,
-            (Types::Number(_), Types::Array(_)) => Types::None,
-            (Types::String(_), Types::Array(_)) => Types::None,
-            (Types::Bool(_), Types::Array(_)) => Types::None,
-            (Types::Array(_), Types::Number(_)) => Types::None,
-            (Types::Array(_), Types::String(_)) => Types::None,
-            (Types::Array(_), Types::Bool(_)) => Types::None,
-            (Types::Array(_), Types::Array(_)) => Types::None,
-            (Types::Array(_), Types::None) => Types::None,
-            (Types::None, Types::Array(_)) => Types::None,
+            _ =>{return Types::None;} // all other cases
         }
     }
 }
@@ -136,27 +94,7 @@ impl Div for Types {
             (Types::Number(l), Types::String(r)) => {return Types::String((l.to_be_bytes()[0] / r.as_bytes()[0]).to_string())},
             (Types::String(l), Types::Number(r)) => {return Types::String((l.as_bytes()[0] / r.to_be_bytes()[0]).to_string())},
             (Types::String(l), Types::String(r)) => {return Types::String((l.as_bytes()[0] / r.as_bytes()[0]).to_string());},
-            (Types::Number(_), Types::None) => Types::None,
-            (Types::String(_), Types::None) => Types::None,
-            (Types::None, Types::Number(_)) => Types::None,
-            (Types::None, Types::String(_)) => Types::None,
-            (Types::None, Types::None) =>Types::None,
-            (Types::Number(_), Types::Bool(_)) => Types::None,
-            (Types::String(_), Types::Bool(_)) => Types::None,
-            (Types::Bool(_), Types::Number(_)) => Types::None,
-            (Types::Bool(_), Types::String(_)) => Types::None,
-            (Types::Bool(_), Types::Bool(_)) => Types::None,
-            (Types::Bool(_), Types::None) => Types::None,
-            (Types::None, Types::Bool(_)) => Types::None,
-            (Types::Number(_), Types::Array(_)) => Types::None,
-            (Types::String(_), Types::Array(_)) => Types::None,
-            (Types::Bool(_), Types::Array(_)) => Types::None,
-            (Types::Array(_), Types::Number(_)) => Types::None,
-            (Types::Array(_), Types::String(_)) => Types::None,
-            (Types::Array(_), Types::Bool(_)) => Types::None,
-            (Types::Array(_), Types::Array(_)) => Types::None,
-            (Types::Array(_), Types::None) => Types::None,
-            (Types::None, Types::Array(_)) => Types::None,
+            _ =>{return Types::None;} // all other cases
         }
     }
 }
