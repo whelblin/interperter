@@ -1,14 +1,13 @@
 use std::collections::VecDeque;
-use crate::program_types;
-use program_types::ProgramTypes;
+use crate::{program_types, errors};
+use program_types::AstNode;
+use errors::Error;
 
-
-
-pub struct Parser<'a>{
-    tokens_: VecDeque<&'a str>,
+pub struct Parser{
+    tokens_: VecDeque<String>,
 }
-impl <'a> Parser<'a>{
-    pub fn new(tokens: VecDeque<&'a str>)->Self{
+impl Parser{
+    pub fn new(tokens: VecDeque<String>)->Self{
         return Parser {tokens_: tokens};
     }
     fn lookahead(&self, offset:usize) -> Option<String>{
@@ -17,19 +16,16 @@ impl <'a> Parser<'a>{
         }
         return None;
     }
-    fn consume(&mut self )->String{
-        let token = self.tokens_.pop_front();
-        if token == None{
-            return "".to_string();
-        }
-        return token.unwrap().to_string();
+    fn consume(& mut self )->Option<String>{
+        let token = self.tokens_.pop_front()?;
+        return Some(token.to_string());
     }
     pub fn print(&self){
         for i in &self.tokens_{
             print!("{} ", i);
         }
     }
-    fn parse_statement(&mut self) -> ProgramTypes{
+    fn parse_statement(&mut self) -> Result<AstNode, Error>{
         if self.lookahead(0).unwrap() == "print"{
             return self.parse_print();
         }
@@ -45,131 +41,175 @@ impl <'a> Parser<'a>{
         else if self.lookahead(1).unwrap() == "="{
             return self.parse_assignment();
         }
+        else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "func" {
+            return self.parse_function();
+        }
         else{
             return self.parse_expression();
         }
     }
-    fn parse_print(&mut self)-> ProgramTypes{
-        self.consume(); // print
-        self.consume(); // (
-            let mut expressions = Vec::new();
-            while self.lookahead(0).unwrap() != ";" && self.lookahead(0).unwrap() != ")"{
-                expressions.push(self.parse_expression());
-            if self.lookahead(0).unwrap() == ","{
-                self.consume();
+    fn parse_function(&mut self)-> Result<AstNode, Error>{
+        self.consume().ok_or(Error::UnexpectedToken)?; // func
+        let name_ = self.consume().ok_or(Error::UnexpectedToken)?; // name
+        self.consume().ok_or(Error::UnexpectedToken)?; // (
+        let mut params = Vec::new();
+        while self.lookahead(0).ok_or(Error::PeekOutOfBounds)? != ")"{
+            params.push(self.parse_statement()?);
+            if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == ","{
+                self.consume().ok_or(Error::UnexpectedToken)?; // ,
             }
         }
-        self.consume();
-        return ProgramTypes::Print {expressions_: expressions}; 
+        self.consume().ok_or(Error::UnexpectedToken)?; // )
+        println!("parms: {:?} Next: {}",params,self.lookahead(0).unwrap() );
+        let body = self.parse_statement()?; // should be the body
+        return Ok(AstNode::FunctionDeclaration { name_: name_, parameters_: params, body_: Box::new(body)});
+    }
+    fn parse_print(&mut self)-> Result<AstNode, Error>{
+        self.consume().ok_or(Error::UnexpectedToken)?; // print
+        self.consume().ok_or(Error::UnexpectedToken)?; // (
+            let mut expressions = Vec::new();
+            while self.lookahead(0).ok_or(Error::PeekOutOfBounds)?  != ";"
+                && self.lookahead(0).ok_or(Error::PeekOutOfBounds)? != ")"{
+                    expressions.push(self.parse_expression()?);
+            if self.lookahead(0).is_some() && self.lookahead(0).unwrap() == ","{
+                self.consume().ok_or(Error::UnexpectedToken)?;
+            }
+        }
+        self.consume().ok_or(Error::TestError)?;
+        return Ok(AstNode::Print {expressions_: expressions}); 
         
        
     }
-    fn parse_assignment(&mut self)-> ProgramTypes{
-        let name = self.consume();
-        self.consume(); // =
-        let mut values:Vec<ProgramTypes> = Vec::new();
-        if self.lookahead(0).unwrap() == "["{
-            while self.lookahead(0).unwrap() != "]"{
-                self.consume(); // [ and ,
-                let value = self.parse_expression();
+    fn parse_assignment(&mut self)-> Result<AstNode, Error>{
+        let name = self.consume().ok_or(Error::PeekOutOfBounds)?;
+        self.consume().ok_or(Error::UnexpectedToken)?; // =
+        let mut values:Vec<AstNode> = Vec::new();
+        if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "["{
+            while self.lookahead(0).ok_or(Error::PeekOutOfBounds)? != "]"{
+                self.consume().ok_or(Error::UnexpectedToken)?; // [ and ,
+                let value = self.parse_expression()?;
                 values.push(value);
             }
-            self.consume(); // ]
-            return ProgramTypes::ArrayAssignment {name_: name, values_: values};
+            self.consume().ok_or(Error::UnexpectedToken)?; // ]
+            return Ok(AstNode::ArrayAssignment {name_: name, values_: values});
         }
-        let value = self.parse_expression();
-        return ProgramTypes::Assignment {name_:name, value_: Box::new(value) }
+        let value = self.parse_expression()?;
+        return Ok(AstNode::Assignment {name_:name, value_: Box::new(value) })
     }
-    fn parse_expression(&mut self)->ProgramTypes{
-        let mut left = self.parse_term();
-        while self.lookahead(0).unwrap().contains(['+', '-', '<', '>']) ||
-           self.lookahead(0).unwrap().contains("==")||
-           self.lookahead(0).unwrap().contains("!=")||
-           self.lookahead(0).unwrap().contains("<=")||
-           self.lookahead(0).unwrap().contains(">="){
-            let operator = self.consume().clone();
-            let right = self.parse_term();
-            left = ProgramTypes::Binary {operator_: operator, left_: Box::new(left), right_: Box::new(right) };
+    fn parse_expression(&mut self)->Result<AstNode, Error>{
+        let mut left = self.parse_term()?;
+        while self.lookahead(0).ok_or(Error::PeekOutOfBounds)?.contains(['+', '-', '<', '>']) ||
+           self.lookahead(0).ok_or(Error::PeekOutOfBounds)?.contains("==")||
+           self.lookahead(0).ok_or(Error::PeekOutOfBounds)?.contains("!=")||
+           self.lookahead(0).ok_or(Error::PeekOutOfBounds)?.contains("<=")||
+           self.lookahead(0).ok_or(Error::PeekOutOfBounds)?.contains(">="){
+            let operator = self.consume().ok_or(Error::UnexpectedToken)?.clone();
+            let right = self.parse_term()?;
+            left = AstNode::Binary {operator_: operator, left_: Box::new(left), right_: Box::new(right) };
         }
-        return left
+        return Ok(left)
     }
-    fn parse_term(&mut self) ->ProgramTypes{
-        let mut left = self.parse_factor();
-        while self.lookahead(0).unwrap().contains(['*', '\\']){
-            let operator = self.consume();
-            let right = self.parse_factor();
-            left = ProgramTypes::Binary {operator_:  operator, left_: Box::new(left), right_: Box::new(right) };
+    fn parse_term(&mut self) ->Result<AstNode, Error>{
+        let mut left = self.parse_factor()?;
+        while self.lookahead(0).ok_or(Error::PeekOutOfBounds)?.contains(['*', '\\']){
+            let operator = self.consume().ok_or(Error::UnexpectedToken)?;
+            let right = self.parse_factor()?;
+            left = AstNode::Binary {operator_:  operator, left_: Box::new(left), right_: Box::new(right) };
 
         }
-        return left;
+        return Ok(left);
     }
-    fn parse_factor(&mut self)->ProgramTypes{
-        if self.lookahead(0).unwrap() == "("{
-            self.consume();
-            let expr= self.parse_expression();
-            self.consume();
-            return expr;
+    fn parse_factor(&mut self)->Result<AstNode, Error>{
+        if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "("{
+            self.consume().ok_or(Error::UnexpectedToken)?;
+            let expr= self.parse_expression()?;
+            self.consume().ok_or(Error::UnexpectedToken)?;
+            return Ok(expr);
         }
-        else if self.lookahead(0).is_some() && self.lookahead(0).unwrap()[0..1].as_bytes()[0].is_ascii_digit(){
-            return ProgramTypes::Number {value_: self.consume().parse::<f32>().unwrap()};
+        else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)?[0..1].as_bytes()[0].is_ascii_digit(){
+            return Ok(AstNode::Number {value_: self.consume().ok_or(Error::UnexpectedToken)?.parse::<f32>().unwrap()});
         }
-        else if self.lookahead(0).is_some() && self.lookahead(0).unwrap().starts_with('"'){
-            return ProgramTypes::String {value_: self.consume().trim_matches('"').to_string() };
+        else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)?.starts_with('"'){
+            return Ok(AstNode::String {value_: self.consume().ok_or(Error::UnexpectedToken)?.trim_matches('"').to_string() });
         }
-        else if self.lookahead(0).is_some() && self.lookahead(0).unwrap().as_bytes()[0].is_ascii_alphabetic(){
-            if self.lookahead(1).unwrap() == "["{
+        else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)?.contains("True"){
+            return Ok(AstNode::Bool { value_:  self.consume().ok_or(Error::UnexpectedToken)?.contains("True")})
+        }
+        else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)?.contains("False"){
+            return Ok(AstNode::Bool { value_:  self.consume().ok_or(Error::UnexpectedToken)?.contains("True")})
+        }
+        else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)?.contains("None"){
+            return Ok(AstNode::None)
+        }
+        else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)?.as_bytes()[0].is_ascii_alphabetic(){
+            if self.lookahead(1).ok_or(Error::PeekOutOfBounds)? == "["{
                 return self.parse_array_access();
             }
-            return ProgramTypes::Identifier {name_: self.consume() };
-        }
-        println!("Error at: {:?}", self.lookahead(0).unwrap());
-        panic!("Unexpected token");
-    }
-    fn parse_array_access(&mut self) ->ProgramTypes{
-        let name = self.consume();
-        self.consume(); // [
-        let index = self.parse_expression();
-        self.consume(); // ]
+            if self.lookahead(1).ok_or(Error::PeekOutOfBounds)? == "("{ // function call
+                return self.parse_function_call()
 
-        return ProgramTypes::ArrayAccess{name_: name, index_: Box::new(index) };
-    }
-    fn parse_if_statement(&mut self) ->ProgramTypes{
-        self.consume(); // if
-        self.consume(); // (
-        let condition = self.parse_expression();
-        self.consume(); // )
-        let if_body = self.parse_statement();
-        let mut  else_body = ProgramTypes::None;
-        if self.lookahead(0).is_some() && self.lookahead(0).unwrap() == "else"{
-            self.consume();
-            else_body = self.parse_statement();
+            }
+            return Ok(AstNode::Identifier {name_: self.consume().ok_or(Error::UnexpectedToken)? });
         }
-        return ProgramTypes::IfStatement {condition_: Box::new(condition), body_: Box::new(if_body), else_: Box::new(else_body)};
+        return Err(Error::UnexpectedToken);
     }
-    fn parse_while_statement(&mut self) ->ProgramTypes{
-        self.consume(); // while
-        self.consume(); // (
-        let condition = self.parse_expression();
-        self.consume(); // )
-        let while_body = self.parse_statement();       
-        return ProgramTypes::WhileStatement {condition_: Box::new(condition), body_: Box::new(while_body) };
-    }
-    fn parse_block(&mut self)->ProgramTypes{
-        self.consume(); // {
-        let body = self.parse();
-        self.consume(); // }
-        return ProgramTypes::Block {body_: Box::new(body) };
-    }
-    pub fn parse(&mut self) -> ProgramTypes{
-        //self.push("testing new system");
-        //self.push("hello");
-        let mut stmts: VecDeque<ProgramTypes> = VecDeque::new();
-        while self.lookahead(0) != None && self.lookahead(0).unwrap() != "}"{
-            stmts.push_back(self.parse_statement());
-            if self.lookahead(0).is_some() && self.lookahead(0).unwrap() == ";"{
-                self.consume();
+
+    fn parse_function_call(&mut self)->Result<AstNode, Error>{
+        let name = self.consume().ok_or(Error::UnexpectedToken)?; // function name
+        self.consume().ok_or(Error::UnexpectedToken)?; // (
+        let mut params = Vec::new();
+        while self.lookahead(0).ok_or(Error::PeekOutOfBounds)? != ")"{
+            params.push(self.parse_statement()?);
+            if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == ","{
+                self.consume().ok_or(Error::UnexpectedToken)?; // ,
             }
         }
-        return ProgramTypes::Program {body_: stmts }
+        self.consume().ok_or(Error::UnexpectedToken)?; // )
+        return Ok(AstNode::FunctionCall { name_: name, parameters_: params })
+    }
+    fn parse_array_access(&mut self) ->Result<AstNode, Error>{
+        let name = self.consume().ok_or(Error::UnexpectedToken)?;
+        self.consume().ok_or(Error::UnexpectedToken)?; // [
+        let index = self.parse_expression()?;
+        self.consume().ok_or(Error::UnexpectedToken)?; // ]
+
+        return Ok(AstNode::ArrayAccess{name_: name, index_: Box::new(index) });
+    }
+    fn parse_if_statement(&mut self) ->Result<AstNode, Error>{
+        self.consume().ok_or(Error::UnexpectedToken)?; // if
+        self.consume().ok_or(Error::UnexpectedToken)?; // (
+        let condition = self.parse_expression()?;
+        self.consume().ok_or(Error::UnexpectedToken)?; // )
+        let if_body = self.parse_statement()?;
+        let mut  else_body = AstNode::None;
+        if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "else"{
+            self.consume().ok_or(Error::UnexpectedToken)?;
+            else_body = self.parse_statement()?;
+        }
+        return Ok(AstNode::IfStatement {condition_: Box::new(condition), body_: Box::new(if_body), else_: Box::new(else_body)});
+    }
+    fn parse_while_statement(&mut self) ->Result<AstNode, Error>{
+        self.consume().ok_or(Error::UnexpectedToken)?; // while
+        self.consume().ok_or(Error::UnexpectedToken)?; // (
+        let condition = self.parse_expression()?;
+        self.consume().ok_or(Error::UnexpectedToken)?; // )
+        let while_body = self.parse_statement()?;       
+        return Ok(AstNode::WhileStatement {condition_: Box::new(condition), body_: Box::new(while_body) });
+    }
+    fn parse_block(&mut self)->Result<AstNode, Error>{
+        self.consume().ok_or(Error::UnexpectedToken)?; // {
+        let body = self.parse()?;
+        self.consume().ok_or(Error::UnexpectedToken)?; // }
+        return Ok(AstNode::Block {body_: Box::new(body) });
+    }
+    pub fn parse(&mut self) -> Result<AstNode, Error>{
+        let mut stmts: VecDeque<AstNode> = VecDeque::new();
+        while self.lookahead(0).is_some_and(|token| {token !="}"}){
+            stmts.push_back(self.parse_statement()?);
+            if self.lookahead(0).is_some_and(|token| { token == ";"}){
+                self.consume().ok_or(Error::UnexpectedToken)?;
+            }
+        }
+        return Ok(AstNode::Program {body_: stmts })
     }
 }

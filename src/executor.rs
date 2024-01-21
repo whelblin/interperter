@@ -1,7 +1,6 @@
 use std::collections::{HashMap, LinkedList};
 
-use crate::{program_types::ProgramTypes, types::Types};
-// used to store variables in the env
+use crate::{program_types::AstNode, types::Types, errors::Error};
 
 pub struct Executor{
     stack_: LinkedList<HashMap<String, Types>> // stack of envs
@@ -9,137 +8,152 @@ pub struct Executor{
 
 impl Executor{
     pub fn new()->Self{
-        let mut result = Executor{stack_:LinkedList::new() };
-        result.stack_.push_back(HashMap::new()); // main env
-        return result
+        Self{stack_: LinkedList::from([HashMap::new()])}
     }
     pub fn print_env(&self){
-        println!("{:?}", self.stack_);
+        println!("ENV: {:#?}", self.stack_);
     }
-    pub fn execute(&mut self, ast_: &ProgramTypes)->Types{
+    pub fn execute(&mut self, ast_: &AstNode)->Result<Types, Error>{
         match ast_.clone(){
-            ProgramTypes::Program {   body_ } =>{
+            AstNode::Program {   body_ } =>{
                for stm in body_{
-                    self.execute(&stm);
+                    self.execute(&stm)?;
                }
-               return Types::None;
+               return Ok(Types::None);
             }
-            ProgramTypes::Print {   expressions_ } => {
+            AstNode::Print {   expressions_ } => {
                 for expr in expressions_{
-                    print!("{} ", self.execute(&expr));
+                    print!("{} ", self.execute(&expr)?);
                 }
-                println!();
-                return Types::None;
+                println!(); // endline for the expression
+                return Ok(Types::None);
             },
-            ProgramTypes::Binary {   operator_, left_, right_ } =>{
-                let new_left = self.execute(&left_); 
-                let new_right = self.execute(&right_);
-                if operator_ == "+"{
-                        return new_left + new_right;
-                }
-                else if operator_ == "-"{
-                    return new_left - new_right;
-                }
-                else if operator_ == "*"{
-                    return new_left * new_right;
-                }
-                else if operator_ == "/"{
-                    return new_left / new_right;
-                }
-                else if operator_ == "<"{
-                    return Types::Bool(new_left < new_right);
-                }
-                else if operator_ == "<="{
-                    return Types::Bool(new_left <= new_right);
-                }
-                else if operator_ == ">"{
-                    return Types::Bool(new_left > new_right);
-                }
-                else if operator_ == ">="{
-                    return Types::Bool(new_left >= new_right);
-                }
-                else if operator_ == "=="{
-                    return Types::Bool(new_left == new_right);
-                }
-                else if operator_ == "!="{
-                    return Types::Bool(new_left != new_right);
-                }
-                return Types::None;
+            AstNode::Binary {   operator_, left_, right_ } =>{
+                let new_left = self.execute(&left_)?; 
+                let new_right = self.execute(&right_)?;
+                _ = match operator_.as_str(){
+                    "+"=>{return Ok(new_left + new_right);},
+                    "-"=>{return Ok(new_left - new_right);},
+                    "*"=>{return Ok(new_left * new_right);},
+                    "/"=>{return Ok(new_left / new_right);},
+                    "<"=>{return Ok(Types::Bool(new_left < new_right));},
+                    "<="=>{return Ok(Types::Bool(new_left <= new_right));},
+                    ">"=>{return Ok(Types::Bool(new_left > new_right));},
+                    ">="=>{return Ok(Types::Bool(new_left >= new_right));},
+                    "=="=>{return Ok(Types::Bool(new_left == new_right));},
+                    "!="=>{return Ok(Types::Bool(new_left != new_right));},
+                    _ => {return Ok(Types::None);}
+                };
             },
-            ProgramTypes::Number {   value_ } => {return Types::Number(value_);},
-            ProgramTypes::String {   value_ } => {return Types::String(value_);},
-            ProgramTypes::Identifier {   name_ } => {
+            AstNode::Number {   value_ } => {return Ok(Types::Number(value_));},
+            AstNode::String {   value_ } => {return Ok(Types::String(value_));},
+            AstNode::Identifier {   name_ } => {
                 // goes through each env on the stack to ensure closures
                 for itr in self.stack_.iter().rev(){
                     let value =  itr.get(&name_);
                     if value.is_some(){
-                        return value.unwrap().clone();
+                        return Ok(value.unwrap().clone());
                     }
                 }
-                return Types::None;
+                return Err(Error::IdentifierDoesNotExist);
             }
-            ProgramTypes::Assignment {   name_, value_ } => {
-                let value  = self.execute(&value_);
+            AstNode::Assignment {   name_, value_ } => {
+                let value  = self.execute(&value_)?;
                 self.stack_.back_mut().expect("No stack left").insert(name_, value);
-                return Types::None;
+                return Ok(Types::None);
             },
-            ProgramTypes::ArrayAccess {   name_, index_ } =>{
+            AstNode::ArrayAccess {   name_, index_ } =>{
                 // goes through each env on the stack to ensure closures
-                let index = self.execute(&index_);
+                let index = self.execute(&index_)?;
                 if let Types::Number(num) = index{
                     for itr in self.stack_.iter().rev(){
                         let value =  itr.get(&name_);
                         if value.is_some(){
                             if let Types::Array(vec) = value.unwrap(){
-                                return vec[num as usize].clone();
+                                return Ok(vec[num as usize].clone());
     
                             }
                         }
                     }
 
                 }
-                return Types::None;
+                return Err(Error::IdentifierDoesNotExist);
             },
-            ProgramTypes::IfStatement {   condition_, body_, else_ } =>{
-                let condition = self.execute(&condition_);
+
+            AstNode::IfStatement {   condition_, body_, else_ } =>{
+                let condition = self.execute(&condition_)?;
                 if let Types::Bool(bool) = condition{
                     if bool{
-                        self.execute(&body_);
+                        self.execute(&body_)?;
                     }
                     else{
-                        self.execute(&else_);
+                        self.execute(&else_)?;
                     }
                 }
-                return Types::None;
+                return Ok(Types::None);
                 
             },
-            ProgramTypes::WhileStatement {condition_, body_ } => {
+            AstNode::WhileStatement {condition_, body_ } => {
                 let condition_copy = *condition_.clone();
-                let mut condition = self.execute(&condition_copy);
+                let mut condition = self.execute(&condition_copy)?;
                 while let Types::Bool(_) = condition{
-                    self.execute(&body_);
-                    condition = self.execute(&condition_copy);
+                    self.execute(&body_)?;
+                    condition = self.execute(&condition_copy)?;
                 }
-                return Types::None;
+                return Ok(Types::None);
             },
-            ProgramTypes::Block {   body_ } => {
+            AstNode::Block {   body_ } => {
                 self.stack_.push_back(HashMap::new());
-                self.stack_.push_back(HashMap::new());
-                self.execute(&body_);
-                return Types::None;
+                self.execute(&body_)?;
+                self.stack_.pop_back(); // remove the stack once done
+                return Ok(Types::None);
 
             },
-            ProgramTypes::None => Types::None,
-            ProgramTypes::ArrayAssignment {   values_, name_ } =>{
+            AstNode::None => Ok(Types::None),
+            AstNode::ArrayAssignment {   values_, name_ } =>{
                 
-                let mut array = Vec::new();
-                    for item in values_{
-                        let value = self.execute(&item);
-                        array.push(value);
+                let test = values_.iter() // converts the vector into an iterator 
+                        .map(|x| self.execute(x).expect("Error:")) // call execute on each element
+                        .collect(); // collects them back into an Type::Array
+                self.stack_.back_mut().expect("No stack left").insert(name_, test);    
+                return Ok(Types::None) ;
+            },
+            AstNode::Bool { value_ } => return Ok(Types::Bool(value_)),
+            AstNode::FunctionDeclaration { name_, parameters_, body_ } =>{
+                self.stack_.back_mut().ok_or(Error::StackOut)?.insert(name_, Types::Function {  paramters: parameters_, body_: *body_});
+                return Ok(Types::None);
+            }
+            AstNode::FunctionCall { name_, parameters_ } => {
+                let eval_params:Vec<Types> = parameters_.iter().map(|x| self.execute(x).expect("ERROR:")).collect();
+                let mut newEnv:HashMap<String, Types> = HashMap::new();
+                
+                for itr in self.stack_.clone().iter().rev(){
+                    let function = itr.get(&name_);
+                    if function.is_some(){
+                        if let Types::Function { paramters, body_ } = function.unwrap(){
+                            if paramters.len() != parameters_.len(){
+                                return Err(Error::FunctionParameterUnmatch);
+                            }
+                            println!("Parms: {:?}",eval_params);
+                            for (index, item) in paramters.iter().enumerate(){
+                                if let AstNode::Identifier { name_ } = item{
+                                    println!("Name: {:?}",name_);
+                                    newEnv.insert(name_.clone(), eval_params[index].clone());
+                                }
+                            }
+                            
+                            
+                            self.stack_.push_back(newEnv);
+                            self.execute(body_)?;
+                            self.stack_.pop_back();
+                            return Ok(Types::None);
+                        }
                     }
+                    return Ok(Types::None);
+
+                }
+                return Ok(Types::None);
                 
-                self.stack_.back_mut().expect("No stack left").insert(name_, Types::Array(array));    
-                return Types::None ;
             },
         }
     }

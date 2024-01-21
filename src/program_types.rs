@@ -1,19 +1,23 @@
 use std::collections::VecDeque;
+
 #[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(PartialEq, PartialOrd)]
 #[derive(Clone)]
-pub enum ProgramTypes{
-    Program{body_: VecDeque<ProgramTypes>},
-    Print{expressions_: Vec<ProgramTypes>},
-    Binary{operator_:String, left_: Box<ProgramTypes>, right_:Box<ProgramTypes>},
+pub enum AstNode{
+    Program{body_: VecDeque<AstNode>},
+    Print{expressions_: Vec<AstNode>},
+    Binary{operator_:String, left_: Box<AstNode>, right_:Box<AstNode>},
     Number{value_: f32},
-    Assignment{name_: String, value_: Box<ProgramTypes>},
+    Assignment{name_: String, value_: Box<AstNode>},
     String{value_:String},
+    Bool{value_:bool},
     Identifier{name_: String},
-    ArrayAccess{name_: String, index_: Box<ProgramTypes>},
-    IfStatement{condition_: Box<ProgramTypes>, body_: Box<ProgramTypes>, else_: Box<ProgramTypes>},
-    WhileStatement{condition_: Box<ProgramTypes>, body_: Box<ProgramTypes>},
-    Block{body_:Box<ProgramTypes>},
-    ArrayAssignment{name_: String, values_: Vec<ProgramTypes>},
+    ArrayAccess{name_: String, index_: Box<AstNode>},
+    IfStatement{condition_: Box<AstNode>, body_: Box<AstNode>, else_: Box<AstNode>},
+    WhileStatement{condition_: Box<AstNode>, body_: Box<AstNode>},
+    Block{body_:Box<AstNode>},
+    ArrayAssignment{name_: String, values_: Vec<AstNode>},
+    FunctionDeclaration{name_: String, parameters_: Vec<AstNode>, body_:Box<AstNode>},
+    FunctionCall{name_:String,parameters_: Vec<AstNode> },
     None
 }

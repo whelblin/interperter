@@ -3,28 +3,37 @@ pub mod parser;
 pub mod program_types;
 pub mod types;
 pub mod executor;
+pub mod errors;
 
 use tokenizer::Tokenizer;
 use parser::Parser;
 
 use crate::executor::Executor;
 fn main() {
-    let code = r#"
+    /*
     x = [1,2,3];
     y = 5;
-    print(x, y);
-    print(y);
+    print(x);
+    print(y); */
+    let code = r#"
+    func test(x, y){
+        print(x + y);
+    };
+    print("hello world";
+    z =10;
+    test(5,z);
     "#;
 
     let mut tokenizer = Tokenizer::new();
-    tokenizer.tokenize(code);
-    
-    let mut parser = Parser::new(tokenizer.get_tokens());
-    let ast = parser.parse();
-    //println!("{:#?}", ast);
+    let tokens = tokenizer.tokenize(code.to_string());
+    tokenizer.print();
+    let mut parser = Parser::new(tokens.expect("msg"));
+    let ast = parser.parse().expect("Error:");
+    println!("{:#?}", ast);
 
     let mut executor = Executor::new();
-    executor.execute(&ast);
+    let test  = executor.execute(&ast).expect("Error:");
+    println!("{:?}", test);
     //executor.print_env();
     //parser.print();
 
