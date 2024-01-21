@@ -16,28 +16,25 @@ fn main() {
     print(x);
     print(y); */
     let code = r#"
-    x = [1,2,3];
-    y = 5;
-    print(x);
-    print(y);
-    {
-        x = 5;
-    }
-    p = [1,"hello",3];
-    print(p);
-    print(p[1]);
+    func test(x, y){
+        print(x + y);
+    };
+    print("hello world";
+    z =10;
+    test(5,z);
     "#;
 
     let mut tokenizer = Tokenizer::new();
     let tokens = tokenizer.tokenize(code.to_string());
-    
+    tokenizer.print();
     let mut parser = Parser::new(tokens.expect("msg"));
     let ast = parser.parse().expect("Error:");
-    //println!("{:#?}", ast);
+    println!("{:#?}", ast);
 
     let mut executor = Executor::new();
-    executor.execute(&ast);
-    executor.print_env();
+    let test  = executor.execute(&ast).expect("Error:");
+    println!("{:?}", test);
+    //executor.print_env();
     //parser.print();
 
 }

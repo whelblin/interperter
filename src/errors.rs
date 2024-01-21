@@ -10,5 +10,9 @@ pub enum Error{
     PeekOutOfBounds,
     UnexpectedToken,
     TestError,
+    // Executor Errors
+    IdentifierDoesNotExist,
+    StackOut,
+    FunctionParameterUnmatch,
 
 }

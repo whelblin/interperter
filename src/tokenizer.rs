@@ -67,7 +67,7 @@ impl Tokenizer{
                         let value = result.as_str().to_string();
                         i += value.len();
                         matched = true;
-                        if !value.contains(char::is_whitespace){
+                        if !value.starts_with(char::is_whitespace){
                             self.v_.push_back(value);
                         }
                         break; 

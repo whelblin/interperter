@@ -1,5 +1,11 @@
 use std::ops::{Add, Sub, Mul, Div};
+
+
+
+
 use std::fmt::Display;
+
+use crate::program_types::AstNode;
 #[derive(Debug)]
 #[derive(PartialEq, PartialOrd)]
 #[derive(Clone)]
@@ -8,8 +14,11 @@ pub enum Types{
     String(String),
     Bool(bool),
     Array(Vec<Types>),
-    None
+    Function{paramters: Vec<AstNode>, body_:AstNode},
+    None,
 }
+
+
 /// allows collect to work with iterators on Type
 impl FromIterator<Types> for Types {
     fn from_iter<T: IntoIterator<Item = Types>>(iter: T) -> Types {
@@ -34,15 +43,15 @@ impl Display for Types{
             Types::Number(i) => {write!(f, "{}", i)},
             Types::String(i) =>{write!(f, "{}", i)},
             Types::Bool(i) => {write!(f, "{}", i)},
-            Types::None => return Err(std::fmt::Error),
             Types::Array(i) => {
                 print!("[");
                 for item in &mut i.clone()[..i.len()-1]{
                     print!("{},", item);
                 }
                 print!("{}]", i.last().expect("Out OF Bounds"));
-            Ok(())
+                Ok(())
             },
+            _ => return Err(std::fmt::Error),
     }
 }
 }
