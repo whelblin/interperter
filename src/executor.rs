@@ -125,7 +125,7 @@ impl Executor{
             }
             AstNode::FunctionCall { name_, parameters_ } => {
                 let eval_params:Vec<Types> = parameters_.iter().map(|x| self.execute(x).expect("ERROR:")).collect();
-                let mut newEnv:HashMap<String, Types> = HashMap::new();
+                let mut new_env:HashMap<String, Types> = HashMap::new();
                 
                 for itr in self.stack_.clone().iter().rev(){
                     let function = itr.get(&name_);
@@ -138,12 +138,12 @@ impl Executor{
                             for (index, item) in paramters.iter().enumerate(){
                                 if let AstNode::Identifier { name_ } = item{
                                     println!("Name: {:?}",name_);
-                                    newEnv.insert(name_.clone(), eval_params[index].clone());
+                                    new_env.insert(name_.clone(), eval_params[index].clone());
                                 }
                             }
                             
                             
-                            self.stack_.push_back(newEnv);
+                            self.stack_.push_back(new_env);
                             self.execute(body_)?;
                             self.stack_.pop_back();
                             return Ok(Types::None);
