@@ -1,14 +1,14 @@
-use std::collections::{HashMap, LinkedList};
+use std::{collections::{HashMap, LinkedList}, borrow::Borrow};
 
 use crate::{program_types::AstNode, types::Types, errors::Error};
 
 pub struct Executor{
-    stack_: LinkedList<HashMap<String, Types>> // stack of envs
+    stack_: Vec<HashMap<String, Types>> // stack of envs
 }
 
 impl Executor{
     pub fn new()->Self{
-        Self{stack_: LinkedList::from([HashMap::new()])}
+        Self{stack_: Vec::from([HashMap::new()])}
     }
     pub fn print_env(&self){
         println!("ENV: {:#?}", self.stack_);
@@ -59,7 +59,7 @@ impl Executor{
             }
             AstNode::Assignment {   name_, value_ } => {
                 let value  = self.execute(&value_)?;
-                self.stack_.back_mut().expect("No stack left").insert(name_, value);
+                self.stack_.last_mut().expect("No stack left").insert(name_, value);
                 return Ok(Types::None);
             },
             AstNode::ArrayAccess {   name_, index_ } =>{
@@ -103,9 +103,9 @@ impl Executor{
                 return Ok(Types::None);
             },
             AstNode::Block {   body_ } => {
-                self.stack_.push_back(HashMap::new());
+                self.stack_.push(HashMap::new());
                 self.execute(&body_)?;
-                self.stack_.pop_back(); // remove the stack once done
+                self.stack_.pop(); // remove the stack once done
                 return Ok(Types::None);
 
             },
@@ -115,46 +115,44 @@ impl Executor{
                 let test = values_.iter() // converts the vector into an iterator 
                         .map(|x| self.execute(x).expect("Error:")) // call execute on each element
                         .collect(); // collects them back into an Type::Array
-                self.stack_.back_mut().expect("No stack left").insert(name_, test);    
+                self.stack_.last_mut().expect("No stack left").insert(name_, test);    
                 return Ok(Types::None) ;
             },
             AstNode::Bool { value_ } => return Ok(Types::Bool(value_)),
             AstNode::FunctionDeclaration { name_, parameters_, body_ } =>{
-                self.stack_.back_mut().ok_or(Error::StackOut)?.insert(name_, Types::Function {  paramters: parameters_, body_: *body_});
+                self.stack_.last_mut().ok_or(Error::StackOut)?.insert(name_, Types::Function {  paramters: parameters_, body_: *body_});
                 return Ok(Types::None);
             }
             AstNode::FunctionCall { name_, parameters_ } => {
                 let eval_params:Vec<Types> = parameters_.iter().map(|x| self.execute(x).expect("ERROR:")).collect();
                 let mut new_env:HashMap<String, Types> = HashMap::new();
-                
-                for itr in self.stack_.clone().iter().rev(){
-                    let function = itr.get(&name_);
-                    if function.is_some(){
-                        if let Types::Function { paramters, body_ } = function.unwrap(){
-                            if paramters.len() != parameters_.len(){
-                                return Err(Error::FunctionParameterUnmatch);
-                            }
-                            println!("Parms: {:?}",eval_params);
-                            for (index, item) in paramters.iter().enumerate(){
-                                if let AstNode::Identifier { name_ } = item{
-                                    println!("Name: {:?}",name_);
-                                    new_env.insert(name_.clone(), eval_params[index].clone());
-                                }
-                            }
+                let function:(Vec<AstNode>, AstNode)  = self.get_function(name_).ok_or(Error::IdentifierDoesNotExist)?;
+                if function.0.len() != parameters_.len(){
+                    return Err(Error::FunctionParameterUnmatch);
+                }
                             
-                            
-                            self.stack_.push_back(new_env);
-                            self.execute(body_)?;
-                            self.stack_.pop_back();
-                            return Ok(Types::None);
+                for (index, item) in function.0.iter().enumerate(){
+                    if let AstNode::Identifier { name_ } = item{
+                        new_env.insert(name_.clone(), eval_params[index].clone());
                         }
                     }
-                    return Ok(Types::None);
-
-                }
-                return Ok(Types::None);
-                
+                    self.stack_.push(new_env);
+                    self.execute(&function.1)?;
+                    self.stack_.pop();
+                    return Ok(Types::None);                
             },
         }
     }
+    fn get_function(&mut self, name_:String)-> Option<(Vec<AstNode>, AstNode)>{
+        for itr in self.stack_.iter().rev(){
+            let function:Option<&Types> = itr.get(&name_);
+            if function.is_some(){
+                if let Types::Function { paramters, body_ } = function.unwrap(){
+                    return Some((paramters.clone(), body_.clone()));
+                }
+            }
+        }
+        return None
+    } 
 }
+

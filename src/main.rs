@@ -17,19 +17,27 @@ fn main() {
     print(y); */
     let code = r#"
     func test(x, y){
-        print(x + y);
-    };
+        print("The addtion of x and y is:", x+y);
+        func test1(x){
+            print(x+1);
+        }
+
+        test1(y);
+    
+    }
+    
     print("hello world";
-    z =10;
+    z = 10;
     test(5,z);
+
     "#;
 
     let mut tokenizer = Tokenizer::new();
     let tokens = tokenizer.tokenize(code.to_string());
-    tokenizer.print();
+    //tokenizer.print();
     let mut parser = Parser::new(tokens.expect("msg"));
     let ast = parser.parse().expect("Error:");
-    println!("{:#?}", ast);
+    //println!("{:#?}", ast);
 
     let mut executor = Executor::new();
     let test  = executor.execute(&ast).expect("Error:");

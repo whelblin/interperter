@@ -60,7 +60,6 @@ impl Parser{
             }
         }
         self.consume().ok_or(Error::UnexpectedToken)?; // )
-        println!("parms: {:?} Next: {}",params,self.lookahead(0).unwrap() );
         let body = self.parse_statement()?; // should be the body
         return Ok(AstNode::FunctionDeclaration { name_: name_, parameters_: params, body_: Box::new(body)});
     }
