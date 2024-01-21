@@ -129,8 +129,7 @@ impl Executor{
                 let function:(Vec<AstNode>, AstNode)  = self.get_function(name_).ok_or(Error::IdentifierDoesNotExist)?;
                 if function.0.len() != parameters_.len(){
                     return Err(Error::FunctionParameterUnmatch);
-                }
-                            
+                }                     
                 for (index, item) in function.0.iter().enumerate(){
                     if let AstNode::Identifier { name_ } = item{
                         new_env.insert(name_.clone(), eval_params[index].clone());

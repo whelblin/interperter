@@ -14,5 +14,7 @@ pub enum Error{
     IdentifierDoesNotExist,
     StackOut,
     FunctionParameterUnmatch,
+    // Runner Errors
+    FileNotGiven,
 
 }

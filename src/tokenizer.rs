@@ -55,7 +55,7 @@ impl Tokenizer{
     }
     /// main tokenize function
     /// returns a result of the tokens or an error
-    pub fn tokenize(&mut self,source_code: String) -> Result<VecDeque< String>, Error>{
+    pub fn tokenize(&mut self,source_code: &String) -> Result<VecDeque< String>, Error>{
         let mut i =0;
         while i < source_code.len(){
             let mut matched = false;

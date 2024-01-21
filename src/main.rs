@@ -4,17 +4,17 @@ pub mod program_types;
 pub mod types;
 pub mod executor;
 pub mod errors;
+pub mod runner;
 
+use std::env;
+
+use runner::Runner;
 use tokenizer::Tokenizer;
 use parser::Parser;
 
 use crate::executor::Executor;
 fn main() {
-    /*
-    x = [1,2,3];
-    y = 5;
-    print(x);
-    print(y); */
+    let args: Vec<String> = env::args().collect();
     let code = r#"
     func test(x, y){
         print("The addtion of x and y is:", x+y);
@@ -31,18 +31,11 @@ fn main() {
     test(5,z);
 
     "#;
+    if args.len() > 1{
+        let mut runner = Runner::from_file(args[1].as_str());
+        let temp = runner.generateCode();
+        runner.run();
+    }
 
-    let mut tokenizer = Tokenizer::new();
-    let tokens = tokenizer.tokenize(code.to_string());
-    //tokenizer.print();
-    let mut parser = Parser::new(tokens.expect("msg"));
-    let ast = parser.parse().expect("Error:");
-    //println!("{:#?}", ast);
-
-    let mut executor = Executor::new();
-    let test  = executor.execute(&ast).expect("Error:");
-    println!("{:?}", test);
-    //executor.print_env();
-    //parser.print();
 
 }
