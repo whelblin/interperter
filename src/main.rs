@@ -6,14 +6,14 @@ pub mod executor;
 pub mod errors;
 pub mod runner;
 
-use std::env;
+use std::{env, fmt::Error};
 
 use runner::Runner;
 use tokenizer::Tokenizer;
 use parser::Parser;
 
 use crate::executor::Executor;
-fn main() {
+fn main(){
     let args: Vec<String> = env::args().collect();
     let code = r#"
     func test(x, y){
