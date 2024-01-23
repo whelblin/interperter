@@ -19,5 +19,6 @@ pub enum AstNode{
     ArrayAssignment{name_: String, values_: Vec<AstNode>},
     FunctionDeclaration{name_: String, parameters_: Vec<AstNode>, body_:Box<AstNode>},
     FunctionCall{name_:String,parameters_: Vec<AstNode> },
+    ExternCall{name_: String, value_: Option<Box<AstNode>>},
     None
 }

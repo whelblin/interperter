@@ -16,6 +16,7 @@ pub enum Types{
     Bool(bool),
     Array(Vec<Types>),
     Function{paramters: Vec<AstNode>, body_:AstNode},
+    ExternType{pointer_:Box<Types>},
     None,
 }
 

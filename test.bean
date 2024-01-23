@@ -8,6 +8,6 @@ func test(x, y){
     
     }
     
-    print("hello world";
+    print("hello world");
     z = 10;
     test(5,z);
