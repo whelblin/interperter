@@ -1,13 +1,10 @@
-func test(x, y){
-        print("The addtion of x and y is:", x+y);
-        func test1(x){
-            print(x+1);
-        }
-
-        test1(y);
     
-    }
-    
+func main(){
     print("hello world");
     z = 10;
-    test(5,z);
+    test(5);
+}
+func test(x){
+        return [x,x,x];
+    }
+

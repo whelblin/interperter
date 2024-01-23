@@ -6,16 +6,14 @@ pub mod executor;
 pub mod errors;
 pub mod runner;
 
-use std::{env, fmt::Error};
+use std::env;
 
 use runner::Runner;
-use tokenizer::Tokenizer;
-use parser::Parser;
 
-use crate::executor::Executor;
+
 fn main(){
     let args: Vec<String> = env::args().collect();
-    let code = r#"
+    let _code = r#"
     func test(x, y){
         print("The addtion of x and y is:", x+y);
         func test1(x){
@@ -33,8 +31,8 @@ fn main(){
     "#;
     if args.len() > 1{
         let mut runner = Runner::from_file(args[1].as_str());
-        let temp = runner.generateCode();
-        runner.run();
+        let _temp = runner.generate_code();
+        let _ = runner.run();
     }
 
 

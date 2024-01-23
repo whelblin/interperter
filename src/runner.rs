@@ -17,15 +17,15 @@ impl<'a> Runner<'a>{
     pub fn from_code(code_source:String)->Self{
         Self{file:None, code:Some(code_source)}
     }
-    pub fn addFile(&mut self, file_path:&'a str){
+    pub fn add_file(&mut self, file_path:&'a str){
         self.file = Some(file_path);
     }
-    pub fn addCode(&mut self, code_source:String){
+    pub fn add_code(&mut self, code_source:String){
         self.code = Some(code_source);
     }
     /// Reads the code from the file and converts it to an internal string
     /// After this, it is ready to be run
-    pub fn generateCode(&mut self)->Result<(), std::io::Error>{
+    pub fn generate_code(&mut self)->Result<(), std::io::Error>{
         self.code = Some(fs::read_to_string(self.file.unwrap())?);
         Ok(())
     }
@@ -35,7 +35,8 @@ impl<'a> Runner<'a>{
         let mut parser = Parser::new(tokens.expect("msg"));
         let ast = parser.parse().expect("Error:");
         let mut executor = Executor::new();
-        let test  = executor.execute(&ast).expect("Error:");
+        //println!("Parser: {:#?}", ast);
+        let _test:_  = executor.execute(&ast).expect("Error:");
         Ok(())
     }
 }

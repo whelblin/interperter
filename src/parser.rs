@@ -46,6 +46,8 @@ impl Parser{
         }
         else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "extern" {
             return self.parse_extern();
+        else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "return"{
+            return self.parse_return();
         }
         else{
             return self.parse_expression();
@@ -66,6 +68,13 @@ impl Parser{
         }
 
     }
+
+
+    fn parse_return(&mut self)->Result<AstNode, Error>{
+        self.consume().ok_or(Error::UnexpectedToken)?; // return
+        let value = self.parse_statement()?;
+        return Ok(AstNode::Return { value_: Box::new(value) });
+        }
 
     fn parse_function(&mut self)-> Result<AstNode, Error>{
         self.consume().ok_or(Error::UnexpectedToken)?; // func
@@ -216,9 +225,19 @@ impl Parser{
     }
     fn parse_block(&mut self)->Result<AstNode, Error>{
         self.consume().ok_or(Error::UnexpectedToken)?; // {
-        let body = self.parse()?;
+        let body = self.parse_block_body()?;
         self.consume().ok_or(Error::UnexpectedToken)?; // }
         return Ok(AstNode::Block {body_: Box::new(body) });
+    }
+     fn parse_block_body(&mut self)-> Result<AstNode, Error>{
+        let mut stmts: VecDeque<AstNode> = VecDeque::new();
+        while self.lookahead(0).is_some_and(|token| {token !="}"}){
+            stmts.push_back(self.parse_statement()?);
+            if self.lookahead(0).is_some_and(|token| { token == ";"}){
+                self.consume().ok_or(Error::UnexpectedToken)?;
+            }
+        }
+        return Ok(AstNode::Program {body_: stmts, start_:None});
     }
     pub fn parse(&mut self) -> Result<AstNode, Error>{
         let mut stmts: VecDeque<AstNode> = VecDeque::new();
@@ -227,7 +246,7 @@ impl Parser{
             if self.lookahead(0).is_some_and(|token| { token == ";"}){
                 self.consume().ok_or(Error::UnexpectedToken)?;
             }
-        }
-        return Ok(AstNode::Program {body_: stmts })
+        }//Some(Box::new(AstNode::FunctionCall { name_: "main".to_string(), parameters_: Vec::new() }))
+        return Ok(AstNode::Program {body_: stmts, start_:Some(Box::new(AstNode::FunctionCall { name_: "main".to_string(), parameters_: Vec::new() }))});
     }
 }
