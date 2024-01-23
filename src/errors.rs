@@ -1,3 +1,4 @@
+
 /// Error structure for the possible errors that can occurs
 /// during the tokenizing process
 #[derive(Debug)]

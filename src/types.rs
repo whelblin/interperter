@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::ops::{Add, Sub, Mul, Div};
 
 
@@ -16,6 +15,7 @@ pub enum Types{
     Bool(bool),
     Array(Vec<Types>),
     Function{paramters: Vec<AstNode>, body_:AstNode},
+    ReturnStatement(Box<Types>),
     None,
 }
 

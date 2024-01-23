@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, LinkedList}, borrow::Borrow};
+use std::collections::HashMap;
 
 use crate::{program_types::AstNode, types::Types, errors::Error};
 
@@ -14,10 +14,17 @@ impl Executor{
         println!("ENV: {:#?}", self.stack_);
     }
     pub fn execute(&mut self, ast_: &AstNode)->Result<Types, Error>{
+        //println!("Ast: {:?}", ast_);
         match ast_.clone(){
-            AstNode::Program {   body_ } =>{
+            AstNode::Program {   body_, start_ } =>{
                for stm in body_{
-                    self.execute(&stm)?;
+                    let result = self.execute(&stm)?;
+                    if let Types::ReturnStatement(_) = result{
+                        return Ok(result);
+                    }
+               }
+               if start_.is_some(){
+                self.execute(&start_.unwrap())?;
                }
                return Ok(Types::None);
             }
@@ -104,9 +111,9 @@ impl Executor{
             },
             AstNode::Block {   body_ } => {
                 self.stack_.push(HashMap::new());
-                self.execute(&body_)?;
+               let result= self.execute(&body_)?;
                 self.stack_.pop(); // remove the stack once done
-                return Ok(Types::None);
+                return Ok(result);
 
             },
             AstNode::None => Ok(Types::None),
@@ -136,11 +143,28 @@ impl Executor{
                         }
                     }
                     self.stack_.push(new_env);
-                    self.execute(&function.1)?;
+                    let result = self.execute(&function.1)?;
                     self.stack_.pop();
-                    return Ok(Types::None);                
+                    if let Types::ReturnStatement(i) = result{
+                        return Ok(*i);                
+                    }
+                    return Ok(Types::None);
             },
+            AstNode::Return { value_ } => {
+                let value = self.execute(&value_)?;
+                match value{
+                    Types::Number(i) => {return Ok(Types::ReturnStatement(Box::new(Types::Number(i))))},
+                    Types::String(i) => {return Ok(Types::ReturnStatement(Box::new(Types::String(i))))},
+                    Types::Bool(i) => {return Ok(Types::ReturnStatement(Box::new(Types::Bool(i))))},
+                    Types::Array(i) => {return Ok(Types::ReturnStatement(Box::new(Types::Array(i))))},
+                    Types::Function { paramters: _, body_:_ } => {return Ok(Types::None)},
+                    _ => {return Ok(Types::None)},
+                }                
+            }
         }
+        
+       
+
     }
     fn get_function(&mut self, name_:String)-> Option<(Vec<AstNode>, AstNode)>{
         for itr in self.stack_.iter().rev(){
