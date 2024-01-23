@@ -1,3 +1,4 @@
+
 use std::collections::HashMap;
 
 use crate::{program_types::AstNode, types::Types, errors::Error};
@@ -149,6 +150,31 @@ impl Executor{
                         return Ok(*i);                
                     }
                     return Ok(Types::None);
+            },
+
+            AstNode::ExternCall { name_, value_ } =>{
+                let mut value :Types = Types::None;
+                if value_.is_some(){
+                value  = self.execute(&value_.unwrap())?;
+                }
+                for itr in self.stack_.iter_mut().rev(){
+                    let current_value =  itr.get(&name_);
+                    if current_value.is_some(){
+                        if let Types::None = value{ //getting the value
+                            return Ok(current_value.unwrap().clone());
+                            
+                        }
+                        else{ // assignment to the extern
+                            itr.insert(name_, value);
+                            return Ok(Types::None);
+                        }
+                    }
+                }
+
+                return Err(Error::IdentifierDoesNotExist);
+                
+                
+           
             },
             AstNode::Return { value_ } => {
                 let value = self.execute(&value_)?;

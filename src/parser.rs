@@ -44,6 +44,8 @@ impl Parser{
         else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "func" {
             return self.parse_function();
         }
+        else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "extern" {
+            return self.parse_extern();
         else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "return"{
             return self.parse_return();
         }
@@ -51,6 +53,22 @@ impl Parser{
             return self.parse_expression();
         }
     }
+
+    fn parse_extern(&mut self)->Result<AstNode, Error>{
+        self.consume().ok_or(Error::UnexpectedToken)?; // extern
+        if self.lookahead(1).ok_or(Error::PeekOutOfBounds)? == "="{
+            let value =self.parse_assignment()?;
+            let name = self.consume().ok_or(Error::UnexpectedToken)?; // name
+            return Ok(AstNode::ExternCall { name_: name, value_: Some(Box::new(value)) });
+
+        }
+        else{
+        let name = self.consume().ok_or(Error::UnexpectedToken)?; // name
+        return Ok(AstNode::ExternCall { name_: name, value_:None });
+        }
+
+    }
+
 
     fn parse_return(&mut self)->Result<AstNode, Error>{
         self.consume().ok_or(Error::UnexpectedToken)?; // return
