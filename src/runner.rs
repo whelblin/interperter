@@ -35,7 +35,7 @@ impl<'a> Runner<'a>{
         let mut parser = Parser::new(tokens.expect("msg"));
         let ast = parser.parse().expect("Error:");
         let mut executor = Executor::new();
-        println!("Parser: {:#?}", ast);
+        //println!("Parser: {:#?}", ast);
         let _test:_  = executor.execute(&ast).expect("Error:");
         Ok(())
     }

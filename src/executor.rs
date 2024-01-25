@@ -131,7 +131,6 @@ impl Executor{
             AstNode::FunctionDeclaration { name_, parameters_, body_ } =>{
                 self.stack_.last_mut().ok_or(Error::StackOut)?.insert(name_.clone(), Types::Function {  paramters: parameters_.clone(), body_: *body_.clone(), name_:name_.clone() });
                 return Ok(Types::Function {  paramters: parameters_, body_: *body_, name_:name_ });
-                return Ok(Types::None)
             }
             AstNode::FunctionCall { name_, parameters_ } => {
                 let eval_params:Vec<Types> = parameters_.iter().map(|x| self.execute(x).expect("ERROR:")).collect();
@@ -195,7 +194,7 @@ impl Executor{
                 }                
             }
             AstNode::Closure { name_, function_ } => {
-                let value  = self.execute(&function_)?; // function declaration
+                self.execute(&function_)?; // function declaration
                 //self.stack_.last_mut().expect("No stack left").insert(name_, value);
                 self.closure_.insert(name_, self.stack_.last().unwrap().clone());
                 return Ok(Types::None);
