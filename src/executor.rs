@@ -4,12 +4,13 @@ use std::collections::HashMap;
 use crate::{program_types::AstNode, types::Types, errors::Error};
 
 pub struct Executor{
-    stack_: Vec<HashMap<String, Types>> // stack of envs
+    stack_: Vec<HashMap<String, Types>>, // stack of envs
+    closure_: HashMap<String, HashMap<String, Types>>,
 }
 
 impl Executor{
     pub fn new()->Self{
-        Self{stack_: Vec::from([HashMap::new()])}
+        Self{stack_: Vec::from([HashMap::new()]), closure_: HashMap::new()}
     }
     pub fn print_env(&self){
         println!("ENV: {:#?}", self.stack_);
@@ -130,21 +131,27 @@ impl Executor{
             AstNode::FunctionDeclaration { name_, parameters_, body_ } =>{
                 self.stack_.last_mut().ok_or(Error::StackOut)?.insert(name_.clone(), Types::Function {  paramters: parameters_.clone(), body_: *body_.clone(), name_:name_.clone() });
                 return Ok(Types::Function {  paramters: parameters_, body_: *body_, name_:name_ });
+                return Ok(Types::None)
             }
             AstNode::FunctionCall { name_, parameters_ } => {
                 let eval_params:Vec<Types> = parameters_.iter().map(|x| self.execute(x).expect("ERROR:")).collect();
                 let mut new_env:HashMap<String, Types> = HashMap::new();
-                let function:(Vec<AstNode>, AstNode)  = self.get_function(name_).ok_or(Error::IdentifierDoesNotExist)?;
-                if function.0.len() != parameters_.len(){
+                
+                let function:(String, Vec<AstNode>, AstNode)  = self.get_function(name_).ok_or(Error::IdentifierDoesNotExist)?;
+                if function.1.len() != parameters_.len(){
                     return Err(Error::FunctionParameterUnmatch);
-                }                     
-                for (index, item) in function.0.iter().enumerate(){
+                } 
+                
+                if self.closure_.contains_key(&function.0){
+                    new_env = self.closure_.get(&function.0).unwrap().clone();
+                }                    
+                for (index, item) in function.1.iter().enumerate(){
                     if let AstNode::Identifier { name_ } = item{
                         new_env.insert(name_.clone(), eval_params[index].clone());
                         }
                     }
                     self.stack_.push(new_env);
-                    let result = self.execute(&function.1)?;
+                    let result = self.execute(&function.2)?;
                     self.stack_.pop();
                     if let Types::ReturnStatement(i) = result{
                         return Ok(*i);                
@@ -154,9 +161,8 @@ impl Executor{
 
             AstNode::ExternCall { name_, value_ } =>{
                 let mut value :Types = Types::None;
-                println!("value: {:?}", name_.clone());
                 if value_.is_some(){
-                value  = self.execute(&value_.unwrap())?;
+                    value  = self.execute(&value_.unwrap())?;
                 }
                 for itr in self.stack_.iter_mut().rev(){
                     let current_value =  itr.get(&name_);
@@ -189,8 +195,9 @@ impl Executor{
                 }                
             }
             AstNode::Closure { name_, function_ } => {
-                let value  = self.execute(&function_)?;
-                self.stack_.last_mut().expect("No stack left").insert(name_, value);
+                let value  = self.execute(&function_)?; // function declaration
+                //self.stack_.last_mut().expect("No stack left").insert(name_, value);
+                self.closure_.insert(name_, self.stack_.last().unwrap().clone());
                 return Ok(Types::None);
             },
         }
@@ -198,12 +205,12 @@ impl Executor{
        
 
     }
-    fn get_function(&mut self, name_:String)-> Option<(Vec<AstNode>, AstNode)>{
+    fn get_function(&mut self, name_:String)-> Option<(String, Vec<AstNode>, AstNode)>{
         for itr in self.stack_.iter().rev(){
             let function:Option<&Types> = itr.get(&name_);
             if function.is_some(){
-                if let Types::Function { paramters, body_, name_:_ } = function.unwrap(){
-                    return Some((paramters.clone(), body_.clone()));
+                if let Types::Function { paramters, body_, name_ } = function.unwrap(){
+                    return Some((name_.clone(), paramters.clone(), body_.clone()));
                 }
             }
         }

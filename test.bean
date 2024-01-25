@@ -1,22 +1,33 @@
     
 func main(){
-    print("hello world");
-    z = 10;
-    y = 7;
     temp = test();
     print();
     print("Outside the function");
-    temp(7);
+    temp(20);
+
+    test2();
 }
 func test(){
         y = 10;
         inner = func(z){
-            print(z+y);
-            y = 5;
+            extern y = 5;
+            print(z+ y);
+            y = 6;
             print(y);
         }
         print("within test function");
         inner(5);
+        print("y: ", y);
         return inner;
     }
+
+func test2(){
+    x = 10;
+    func test3(){
+        extern x = 5;
+        print("inside ", x);
+    }
+    test3();
+    print("x ", x);
+}
 

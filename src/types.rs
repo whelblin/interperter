@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ops::{Add, Sub, Mul, Div};
 
 
@@ -7,8 +8,8 @@ use std::fmt::Display;
 
 use crate::program_types::AstNode;
 #[derive(Debug)]
-#[derive(PartialEq, PartialOrd)]
 #[derive(Clone)]
+#[derive(PartialEq, PartialOrd)]
 pub enum Types{
     Number(f32),
     String(String),
