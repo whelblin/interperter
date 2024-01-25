@@ -39,6 +39,9 @@ impl Parser{
             return self.parse_block();
         }
         else if self.lookahead(1).unwrap() == "="{
+            if self.lookahead(2).ok_or(Error::PeekOutOfBounds)? == "func"{
+                return self.parse_closure();
+            }
             return self.parse_assignment();
         }
         else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "func" {
@@ -46,6 +49,7 @@ impl Parser{
         }
         else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "extern" {
             return self.parse_extern();
+        }
         else if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "return"{
             return self.parse_return();
         }
@@ -54,12 +58,34 @@ impl Parser{
         }
     }
 
+    fn parse_closure(&mut self)->Result<AstNode, Error>{
+        let name = self.consume().ok_or(Error::UnexpectedToken)?; // name
+        self.consume().ok_or(Error::UnexpectedToken)?; // =
+        self.consume().ok_or(Error::UnexpectedToken)?; // func
+        self.consume().ok_or(Error::UnexpectedToken)?; // (
+
+            let mut params = Vec::new();
+            while self.lookahead(0).ok_or(Error::PeekOutOfBounds)? != ")"{
+                params.push(self.parse_statement()?);
+                if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == ","{
+                    self.consume().ok_or(Error::UnexpectedToken)?; // ,
+                }
+            }
+            self.consume().ok_or(Error::UnexpectedToken)?; // )
+            let body = self.parse_statement()?; // should be the body
+            let function = AstNode::FunctionDeclaration { name_: name.clone(), parameters_: params, body_: Box::new(body)};
+            return Ok(AstNode::Closure { name_: name, function_: Box::new(function) });
+    }  
+
     fn parse_extern(&mut self)->Result<AstNode, Error>{
         self.consume().ok_or(Error::UnexpectedToken)?; // extern
         if self.lookahead(1).ok_or(Error::PeekOutOfBounds)? == "="{
             let value =self.parse_assignment()?;
-            let name = self.consume().ok_or(Error::UnexpectedToken)?; // name
-            return Ok(AstNode::ExternCall { name_: name, value_: Some(Box::new(value)) });
+            if let AstNode::Assignment { name_, value_ } = value{
+                return Ok(AstNode::ExternCall { name_: name_, value_: Some(value_)});
+
+            }
+            return Err(Error::AssignmentFalied);
 
         }
         else{
@@ -114,13 +140,13 @@ impl Parser{
         if self.lookahead(0).ok_or(Error::PeekOutOfBounds)? == "["{
             while self.lookahead(0).ok_or(Error::PeekOutOfBounds)? != "]"{
                 self.consume().ok_or(Error::UnexpectedToken)?; // [ and ,
-                let value = self.parse_expression()?;
+                let value = self.parse_statement()?;
                 values.push(value);
             }
             self.consume().ok_or(Error::UnexpectedToken)?; // ]
             return Ok(AstNode::ArrayAssignment {name_: name, values_: values});
         }
-        let value = self.parse_expression()?;
+        let value = self.parse_statement()?;
         return Ok(AstNode::Assignment {name_:name, value_: Box::new(value) })
     }
     fn parse_expression(&mut self)->Result<AstNode, Error>{
@@ -250,3 +276,4 @@ impl Parser{
         return Ok(AstNode::Program {body_: stmts, start_:Some(Box::new(AstNode::FunctionCall { name_: "main".to_string(), parameters_: Vec::new() }))});
     }
 }
+

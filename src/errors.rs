@@ -11,6 +11,7 @@ pub enum Error{
     PeekOutOfBounds,
     UnexpectedToken,
     TestError,
+    AssignmentFalied,
     // Executor Errors
     IdentifierDoesNotExist,
     StackOut,

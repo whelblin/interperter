@@ -31,7 +31,7 @@ impl Executor{
             }
             AstNode::Print {   expressions_ } => {
                 for expr in expressions_{
-                    print!("{} ", self.execute(&expr)?);
+                    print!("{}", self.execute(&expr)?);
                 }
                 println!(); // endline for the expression
                 return Ok(Types::None);
@@ -128,8 +128,8 @@ impl Executor{
             },
             AstNode::Bool { value_ } => return Ok(Types::Bool(value_)),
             AstNode::FunctionDeclaration { name_, parameters_, body_ } =>{
-                self.stack_.last_mut().ok_or(Error::StackOut)?.insert(name_, Types::Function {  paramters: parameters_, body_: *body_});
-                return Ok(Types::None);
+                self.stack_.last_mut().ok_or(Error::StackOut)?.insert(name_.clone(), Types::Function {  paramters: parameters_.clone(), body_: *body_.clone(), name_:name_.clone() });
+                return Ok(Types::Function {  paramters: parameters_, body_: *body_, name_:name_ });
             }
             AstNode::FunctionCall { name_, parameters_ } => {
                 let eval_params:Vec<Types> = parameters_.iter().map(|x| self.execute(x).expect("ERROR:")).collect();
@@ -154,6 +154,7 @@ impl Executor{
 
             AstNode::ExternCall { name_, value_ } =>{
                 let mut value :Types = Types::None;
+                println!("value: {:?}", name_.clone());
                 if value_.is_some(){
                 value  = self.execute(&value_.unwrap())?;
                 }
@@ -183,10 +184,15 @@ impl Executor{
                     Types::String(i) => {return Ok(Types::ReturnStatement(Box::new(Types::String(i))))},
                     Types::Bool(i) => {return Ok(Types::ReturnStatement(Box::new(Types::Bool(i))))},
                     Types::Array(i) => {return Ok(Types::ReturnStatement(Box::new(Types::Array(i))))},
-                    Types::Function { paramters: _, body_:_ } => {return Ok(Types::None)},
+                    Types::Function { paramters, body_, name_ } => {return Ok(Types::ReturnStatement(Box::new(Types::Function { name_: name_, paramters: paramters, body_: body_ })))},
                     _ => {return Ok(Types::None)},
                 }                
             }
+            AstNode::Closure { name_, function_ } => {
+                let value  = self.execute(&function_)?;
+                self.stack_.last_mut().expect("No stack left").insert(name_, value);
+                return Ok(Types::None);
+            },
         }
         
        
@@ -196,7 +202,7 @@ impl Executor{
         for itr in self.stack_.iter().rev(){
             let function:Option<&Types> = itr.get(&name_);
             if function.is_some(){
-                if let Types::Function { paramters, body_ } = function.unwrap(){
+                if let Types::Function { paramters, body_, name_:_ } = function.unwrap(){
                     return Some((paramters.clone(), body_.clone()));
                 }
             }

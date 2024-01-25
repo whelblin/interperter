@@ -2,9 +2,21 @@
 func main(){
     print("hello world");
     z = 10;
-    test(5);
+    y = 7;
+    temp = test();
+    print();
+    print("Outside the function");
+    temp(7);
 }
-func test(x){
-        return [x,x,x];
+func test(){
+        y = 10;
+        inner = func(z){
+            print(z+y);
+            y = 5;
+            print(y);
+        }
+        print("within test function");
+        inner(5);
+        return inner;
     }
 

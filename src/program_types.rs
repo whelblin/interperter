@@ -21,5 +21,6 @@ pub enum AstNode{
     FunctionDeclaration{name_: String, parameters_: Vec<AstNode>, body_:Box<AstNode>},
     FunctionCall{name_:String,parameters_: Vec<AstNode> },
     ExternCall{name_: String, value_: Option<Box<AstNode>>},
+    Closure{name_:String, function_:Box<AstNode>},
     None
 }

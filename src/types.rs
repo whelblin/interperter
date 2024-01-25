@@ -14,7 +14,7 @@ pub enum Types{
     String(String),
     Bool(bool),
     Array(Vec<Types>),
-    Function{paramters: Vec<AstNode>, body_:AstNode},
+    Function{name_: String,paramters: Vec<AstNode>, body_:AstNode},
     ExternType{pointer_:Box<Types>},
     ReturnStatement(Box<Types>),
     None,
